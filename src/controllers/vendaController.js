@@ -1,57 +1,80 @@
-let vendas = [];
-let nextId = 1;
+const { Venda, Cliente, Produto, Estoque } = require('../models');
 
-// CREATE
-exports.criar = (req, res) => {
-  const { clienteId, itens } = req.body;
-
-  if (!clienteId || !Array.isArray(itens) || itens.length === 0) {
-    return res.status(400).json({
-      erro: 'clienteId e itens são obrigatórios'
+exports.listarVendas = async (req, res) => {
+  try {
+    const vendas = await Venda.findAll({
+      include: Cliente
     });
+    res.json(vendas);
+  } catch (error) {
+    res.status(500).json({ erro: 'Erro ao listar vendas' });
   }
+};
 
-  let total = 0;
+exports.buscarVendaPorId = async (req, res) => {
+  try {
+    const venda = await Venda.findByPk(req.params.id, {
+      include: Cliente
+    });
 
-  for (const item of itens) {
-    if (!item.produtoId || !item.quantidade) {
+    if (!venda) {
+      return res.status(404).json({ erro: 'Venda não encontrada' });
+    }
+
+    res.json(venda);
+  } catch (error) {
+    res.status(500).json({ erro: 'Erro ao buscar venda' });
+  }
+};
+
+exports.criarVenda = async (req, res) => {
+  try {
+    const { clienteId, itens } = req.body;
+
+    if (!clienteId || !Array.isArray(itens) || itens.length === 0) {
       return res.status(400).json({
-        erro: 'Cada item precisa de produtoId e quantidade'
+        erro: 'clienteId e itens são obrigatórios'
       });
     }
 
-    // valor mockado (sem banco ainda)
-    total += item.quantidade * 10;
-  }
+    const cliente = await Cliente.findByPk(clienteId);
+    if (!cliente) {
+      return res.status(404).json({ erro: 'Cliente não encontrado' });
+    }
 
-  const venda = {
-    id: nextId++,
-    clienteId,
-    itens,
-    total,
-    data: new Date()
-  };
+    let total = 0;
 
-  vendas.push(venda);
+    for (const item of itens) {
+      const produto = await Produto.findByPk(item.produtoId);
+      if (!produto) {
+        return res.status(404).json({
+          erro: `Produto ${item.produtoId} não encontrado`
+        });
+      }
 
-  res.status(201).json(venda);
-};
+      const estoque = await Estoque.findOne({
+        where: { ProdutoId: produto.id }
+      });
 
-// READ ALL
-exports.listar = (req, res) => {
-  res.json(vendas);
-};
+      if (!estoque || estoque.quantidade < item.quantidade) {
+        return res.status(400).json({
+          erro: `Estoque insuficiente para ${produto.nome}`
+        });
+      }
 
-// READ BY ID
-exports.buscarPorId = (req, res) => {
-  const id = Number(req.params.id);
-  const venda = vendas.find(v => v.id === id);
+      estoque.quantidade -= item.quantidade;
+      await estoque.save();
 
-  if (!venda) {
-    return res.status(404).json({
-      erro: 'Venda não encontrada'
+      total += produto.preco * item.quantidade;
+    }
+
+    const venda = await Venda.create({
+      ClienteId: clienteId,
+      total
     });
-  }
 
-  res.json(venda);
+    res.status(201).json(venda);
+  } catch (error) {
+    res.status(500).json({ erro: 'Erro ao registrar venda' });
+  }
 };

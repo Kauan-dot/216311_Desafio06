@@ -1,38 +1,40 @@
-let produtos = [];
-let nextId = 1;
+const { Produto } = require('../models');
 
 // CREATE
-exports.criar = (req, res) => {
-  const { nome, descricao, preco, categoria } = req.body;
+exports.criar = async (req, res) => {
+  try {
+    const { nome, descricao, preco, categoria } = req.body;
 
-  if (!nome || preco == null) {
-    return res.status(400).json({
-      erro: 'Nome e preço são obrigatórios'
+    if (!nome || preco == null) {
+      return res.status(400).json({
+        erro: 'Nome e preço são obrigatórios'
+      });
+    }
+
+    const produto = await Produto.create({
+      nome,
+      descricao,
+      preco,
+      categoria
+    });
+
+    res.status(201).json(produto);
+  } catch (error) {
+    res.status(500).json({
+      erro: 'Erro ao criar produto'
     });
   }
-
-  const produto = {
-    id: nextId++,
-    nome,
-    descricao,
-    preco,
-    categoria
-  };
-
-  produtos.push(produto);
-
-  res.status(201).json(produto);
 };
 
 // READ ALL
-exports.listar = (req, res) => {
+exports.listar = async (req, res) => {
+  const produtos = await Produto.findAll();
   res.json(produtos);
 };
 
 // READ BY ID
-exports.buscarPorId = (req, res) => {
-  const id = Number(req.params.id);
-  const produto = produtos.find(p => p.id === id);
+exports.buscarPorId = async (req, res) => {
+  const produto = await Produto.findByPk(req.params.id);
 
   if (!produto) {
     return res.status(404).json({
@@ -44,9 +46,8 @@ exports.buscarPorId = (req, res) => {
 };
 
 // UPDATE
-exports.atualizar = (req, res) => {
-  const id = Number(req.params.id);
-  const produto = produtos.find(p => p.id === id);
+exports.atualizar = async (req, res) => {
+  const produto = await Produto.findByPk(req.params.id);
 
   if (!produto) {
     return res.status(404).json({
@@ -55,26 +56,21 @@ exports.atualizar = (req, res) => {
   }
 
   const { nome, descricao, preco, categoria } = req.body;
-
-  if (nome !== undefined) produto.nome = nome;
-  if (descricao !== undefined) produto.descricao = descricao;
-  if (preco !== undefined) produto.preco = preco;
-  if (categoria !== undefined) produto.categoria = categoria;
+  await produto.update({ nome, descricao, preco, categoria });
 
   res.json(produto);
 };
 
 // DELETE
-exports.deletar = (req, res) => {
-  const id = Number(req.params.id);
-  const index = produtos.findIndex(p => p.id === id);
+exports.deletar = async (req, res) => {
+  const produto = await Produto.findByPk(req.params.id);
 
-  if (index === -1) {
+  if (!produto) {
     return res.status(404).json({
       erro: 'Produto não encontrado'
     });
   }
 
-  produtos.splice(index, 1);
+  await produto.destroy();
   res.status(204).send();
 };

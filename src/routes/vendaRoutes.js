@@ -1,9 +1,15 @@
 const express = require('express');
 const router = express.Router();
+
 const vendaController = require('../controllers/vendaController');
 
-router.post('/', vendaController.criar);
-router.get('/', vendaController.listar);
-router.get('/:id', vendaController.buscarPorId);
+// listar vendas
+router.get('/', vendaController.listarVendas);
 
-module.exports = router;
+// buscar venda por id
+router.get('/:id', vendaController.buscarVendaPorId);
+
+// criar venda
+router.post('/', vendaController.criarVenda);
+
+module.exports = router; // 🔥 ESSENCIAL

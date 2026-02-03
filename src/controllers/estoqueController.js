@@ -1,70 +1,38 @@
-let estoque = [];
+const { Estoque, Produto } = require('../models');
 
-// Criar ou atualizar estoque de um produto
-exports.definir = (req, res) => {
+// Criar ou atualizar estoque
+exports.definir = async (req, res) => {
   const { produtoId, quantidade } = req.body;
 
-  if (!produtoId || quantidade === undefined) {
-    return res.status(400).json({
-      erro: 'produtoId e quantidade são obrigatórios'
+  const produto = await Produto.findByPk(produtoId);
+  if (!produto) {
+    return res.status(404).json({
+      erro: 'Produto não encontrado'
     });
   }
 
-  let item = estoque.find(e => e.produtoId === produtoId);
+  let estoque = await Estoque.findOne({
+    where: { ProdutoId: produtoId }
+  });
 
-  if (item) {
-    item.quantidade = quantidade;
-    return res.json(item);
+  if (estoque) {
+    estoque.quantidade = quantidade;
+    await estoque.save();
+    return res.json(estoque);
   }
 
-  const novoItem = {
-    produtoId,
+  const novo = await Estoque.create({
+    ProdutoId: produtoId,
     quantidade
-  };
+  });
 
-  estoque.push(novoItem);
-  res.status(201).json(novoItem);
-};
-
-// Entrada de estoque
-exports.entrada = (req, res) => {
-  const { produtoId, quantidade } = req.body;
-
-  const item = estoque.find(e => e.produtoId === produtoId);
-
-  if (!item) {
-    return res.status(404).json({
-      erro: 'Produto não encontrado no estoque'
-    });
-  }
-
-  item.quantidade += quantidade;
-  res.json(item);
-};
-
-// Saída de estoque
-exports.saida = (req, res) => {
-  const { produtoId, quantidade } = req.body;
-
-  const item = estoque.find(e => e.produtoId === produtoId);
-
-  if (!item) {
-    return res.status(404).json({
-      erro: 'Produto não encontrado no estoque'
-    });
-  }
-
-  if (item.quantidade < quantidade) {
-    return res.status(400).json({
-      erro: 'Estoque insuficiente'
-    });
-  }
-
-  item.quantidade -= quantidade;
-  res.json(item);
+  res.status(201).json(novo);
 };
 
 // Consultar estoque
-exports.listar = (req, res) => {
+exports.listar = async (req, res) => {
+  const estoque = await Estoque.findAll({
+    include: Produto
+  });
   res.json(estoque);
 };

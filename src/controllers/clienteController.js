@@ -1,43 +1,57 @@
-let clientes = [];
-let nextId = 1;
+const { Cliente } = require('../models');
 
 // CREATE
-exports.criar = (req, res) => {
-  const { nome, email, telefone } = req.body;
+exports.criar = async (req, res) => {
+  try {
+    const { nome, email, telefone } = req.body;
 
-  if (!nome || !email) {
-    return res.status(400).json({
-      erro: 'Nome e email são obrigatórios'
+    if (!nome || !email) {
+      return res.status(400).json({
+        erro: 'Nome e email são obrigatórios'
+      });
+    }
+
+    const cliente = await Cliente.create({
+      nome,
+      email,
+      telefone
+    });
+
+    res.status(201).json(cliente);
+  } catch (error) {
+    res.status(500).json({
+      erro: 'Erro ao criar cliente'
     });
   }
-
-  const cliente = {
-    id: nextId++,
-    nome,
-    email,
-    telefone
-  };
-
-  clientes.push(cliente);
-
-  res.status(201).json(cliente);
 };
 
 // READ ALL
-exports.listar = (req, res) => {
-  res.json(clientes);
+exports.listar = async (req, res) => {
+  try {
+    const clientes = await Cliente.findAll();
+    res.json(clientes);
+  } catch (error) {
+    res.status(500).json({
+      erro: 'Erro ao listar clientes'
+    });
+  }
 };
 
 // READ BY ID
-exports.buscarPorId = (req, res) => {
-  const id = Number(req.params.id);
-  const cliente = clientes.find(c => c.id === id);
+exports.buscarPorId = async (req, res) => {
+  try {
+    const cliente = await Cliente.findByPk(req.params.id);
 
-  if (!cliente) {
-    return res.status(404).json({
-      erro: 'Cliente não encontrado'
+    if (!cliente) {
+      return res.status(404).json({
+        erro: 'Cliente não encontrado'
+      });
+    }
+
+    res.json(cliente);
+  } catch (error) {
+    res.status(500).json({
+      erro: 'Erro ao buscar cliente'
     });
   }
-
-  res.json(cliente);
 };
